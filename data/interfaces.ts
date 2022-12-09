@@ -16,6 +16,7 @@ export interface Card {
   cost?: number;
   defense?: number;
   functionalText?: string;
+  functionalTextChunks?: FunctionalTextChunk[][];
   fusions?: Fusion[];
   hero?: Hero;
   intellect?: number;
@@ -32,6 +33,7 @@ export interface Card {
   specializations?: Hero[];
   talents?: Talent[];
   young?: boolean;
+  idFromSetIds: string;
 }
 
 export interface Image {
@@ -347,4 +349,10 @@ export enum Art {
   GoldColdFoil = "Gold cold foil",
   RainbowFoil = "Rainbow foil",
   Standard = "Standard",
+}
+
+export interface FunctionalTextChunk {
+  strong: boolean;
+  italic: boolean;
+  text: string;
 }

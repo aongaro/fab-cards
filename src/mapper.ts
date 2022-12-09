@@ -4,6 +4,7 @@ import {
   Class,
   // EquipmentSubType,
   Format,
+  FunctionalTextChunk,
   Fusion,
   // HandsRequired,
   Hero,
@@ -183,6 +184,10 @@ const getIdentifier = (card: ParsedCard): string => {
       color = "";
   }
   return color ? `${name}-${color}` : name;
+};
+
+const getIdentifierFromSetIds = (card: ParsedCard): string => {
+  return card.identifiers.join("-");
 };
 
 const setEditionMapping = {
@@ -493,6 +498,7 @@ const getCardData = (card: ParsedCard): Card => {
     specializations: getSpecializations(card),
     talents: getTalents(card),
     young: getYoung(card) as boolean,
+    idFromSetIds: getIdentifierFromSetIds(card),
   };
 };
 
@@ -515,8 +521,86 @@ const addOppositeSideCardIdentifiers = (cards: Card[]) => {
       ...(oppositeSide
         ? { oppositeSideCardIdentifier: oppositeSide.cardIdentifier }
         : {}),
-      ...(isCardBack ? { isCardBack } : {}),
+      ...(isCardBack
+        ? {
+            isCardBack,
+            idFromSetIds: card.idFromSetIds
+              .split("-")
+              .map((id) => `${id}F`)
+              .join("-"),
+          }
+        : {}),
     };
+  });
+};
+
+const addCardFuncionalTextChunks = (cards: Card[]) => {
+  return cards.map((card) => {
+    const { functionalText } = card;
+    if (functionalText) {
+      // Now we parse text from csv into somethng we can render as html
+      // without dangersourlySetInnerHTML.
+      // ** ** is bold text, * * is italic, /n is newline
+      //We initially split on /n to create all the text lines
+      const chunks = functionalText.split("\n");
+      const parsedResult = chunks.map((chunk, i) => {
+        const reB = /\*\*(.*?)\*\*/g;
+        const reI = /\*(.*?)\*/g;
+        const reS = /\*\*/g;
+        const reSI = /\*/g;
+        const boldmatch = chunk.match(reB);
+        const splits = chunk.split(reB);
+        const strippedBold = boldmatch
+          ? boldmatch.map((b) => b.replace(reS, ""))
+          : [];
+        const textChunks: FunctionalTextChunk[] = [];
+        splits.map((sp) => {
+          sp.replace("\n", "");
+          if (strippedBold.length > 0 && strippedBold.indexOf(sp) !== -1) {
+            textChunks.push({ strong: true, italic: false, text: sp.trim() });
+          } else if (sp.indexOf("*") !== -1) {
+            const italicmatch = sp.match(reI);
+            const split = sp.split(reI);
+            const strippeditalic = italicmatch
+              ? italicmatch.map((b) => b.replace(reSI, ""))
+              : [];
+            split.map((s) => {
+              if (
+                strippeditalic.length > 0 &&
+                strippeditalic.indexOf(s) !== -1
+              ) {
+                textChunks.push({
+                  italic: true,
+                  strong: false,
+                  text: s.trim(),
+                });
+              } else {
+                if (s !== "")
+                  textChunks.push({
+                    strong: false,
+                    italic: false,
+                    text: s.trim(),
+                  });
+              }
+              return s;
+            });
+            return { strong: false, italic: true, text: sp };
+          } else {
+            if (sp !== "")
+              textChunks.push({
+                strong: false,
+                italic: false,
+                text: sp.trim(),
+              });
+          }
+          return sp;
+        });
+        return textChunks;
+      });
+
+      card.functionalTextChunks = parsedResult.filter((r) => r.length > 0);
+    }
+    return card;
   });
 };
 
@@ -524,5 +608,5 @@ export const mapCardData = (parsedCards: ParsedCard[]): Card[] => {
   const cards = parsedCards.map((parsedCard) => {
     return getCardData(parsedCard);
   });
-  return addOppositeSideCardIdentifiers(cards);
+  return addOppositeSideCardIdentifiers(addCardFuncionalTextChunks(cards));
 };

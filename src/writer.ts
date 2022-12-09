@@ -8,6 +8,7 @@ import {
   // EquipmentCard,
   // EquipmentSubType,
   Format,
+  FunctionalTextChunk,
   Fusion,
   // HandsRequired,
   Hero,
@@ -79,6 +80,21 @@ const getImages = (images: Image[]) => {
   );
 };
 
+const getFunctionalTextChunks = (chunks: FunctionalTextChunk[][]) => {
+  return chunks.reduce((result, row, i) => {
+    const content = row.reduce(
+      (rowElements, { strong, text, italic }) =>
+        (rowElements += `{ strong: ${strong}, italic: ${italic}, text: \`${text}\` },`),
+      ``
+    );
+    result += content;
+    if (i === chunks.length - 1) {
+      result += `]`;
+    }
+    return result;
+  }, `[`);
+};
+
 const generateCardTypeScript = (card: Card): String => {
   return `{
     artists: [${card.artists.map((artist) => `"${artist}"`)}],
@@ -94,10 +110,17 @@ const generateCardTypeScript = (card: Card): String => {
     subtypes: [${getEnumValues(card.subtypes, "Subtype", Subtype)}],
     types: [${getEnumValues(card.types, "Type", Type)}],
     typeText: "${card.typeText}",
-
+    idFromSetIds: "${card.idFromSetIds}",
     ${card.cost || card.cost === 0 ? `cost: ${card.cost},` : ``}
     ${card.defense || card.defense === 0 ? `defense: ${card.defense},` : ``}
     ${card.functionalText ? `functionalText: \`${card.functionalText}\`,` : ``}
+    ${
+      card.functionalTextChunks
+        ? `functionalTextChunks: [${getFunctionalTextChunks(
+            card.functionalTextChunks
+          )}],`
+        : []
+    }
     ${
       card.fusions && card.fusions.length > 0
         ? `fusions: [${getEnumValues(card.fusions, "Fusion", Fusion)}],`
